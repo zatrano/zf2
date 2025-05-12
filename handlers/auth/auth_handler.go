@@ -199,29 +199,14 @@ func (h *AuthHandler) UpdatePassword(c *fiber.Ctx) error {
 		return c.Redirect("/auth/login", fiber.StatusSeeOther)
 	}
 
-	var request struct {
-		CurrentPassword string `form:"current_password"`
-		NewPassword     string `form:"new_password"`
-		ConfirmPassword string `form:"confirm_password"`
-	}
-
-	if err := c.BodyParser(&request); err != nil {
-		logconfig.SLog.Warnf("Parola güncelleme isteği ayrıştırılamadı: %v", err)
-		_ = flashmessages.SetFlashMessage(c, flashmessages.FlashErrorKey, "Lütfen tüm şifre alanlarını doldurun.")
+	req, ok := c.Locals("updatePasswordRequest").(requests.UpdatePasswordRequest)
+	if !ok {
+		logconfig.SLog.Warn("Parola güncelleme: Geçersiz istek formatı")
+		_ = flashmessages.SetFlashMessage(c, flashmessages.FlashErrorKey, "Geçersiz istek formatı.")
 		return c.Redirect("/auth/profile", fiber.StatusSeeOther)
 	}
 
-	if request.CurrentPassword == "" || request.NewPassword == "" || request.ConfirmPassword == "" {
-		_ = flashmessages.SetFlashMessage(c, flashmessages.FlashErrorKey, "Lütfen tüm şifre alanlarını doldurun.")
-		return c.Redirect("/auth/profile", fiber.StatusSeeOther)
-	}
-
-	if request.NewPassword != request.ConfirmPassword {
-		_ = flashmessages.SetFlashMessage(c, flashmessages.FlashErrorKey, "Yeni şifreler uyuşmuyor.")
-		return c.Redirect("/auth/profile", fiber.StatusSeeOther)
-	}
-
-	if err := h.service.UpdatePassword(userID, request.CurrentPassword, request.NewPassword); err != nil {
+	if err := h.service.UpdatePassword(userID, req.CurrentPassword, req.NewPassword); err != nil {
 		return h.handleError(c, err, userID, "", "Parola Güncelleme")
 	}
 
